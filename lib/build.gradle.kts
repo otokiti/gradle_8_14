@@ -6,36 +6,62 @@
  */
 
 plugins {
-    // Apply the java-library plugin for API and implementation separation.
     `java-library`
 }
 
 repositories {
-    // Use Maven Central for resolving dependencies.
     mavenCentral()
 }
 
 dependencies {
-    // Use JUnit Jupiter for testing.
-    testImplementation(libs.junit.jupiter)
-
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-
-    // This dependency is exported to consumers, that is to say found on their compile classpath.
-    api(libs.commons.math3)
-
-    // This dependency is used internally, and not exposed to consumers on their own compile classpath.
-    implementation(libs.guava)
+	implementation("commons-codec:commons-codec:1.19.0")
+	implementation("commons-collections:commons-collections:3.2.2")
+	implementation("commons-io:commons-io:2.20.0")
+	implementation("org.apache.commons:commons-compress:1.28.0")
+	implementation("org.apache.commons:commons-lang3:3.18.0")
 }
 
-// Apply a specific Java toolchain to ease working on different environments.
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(21)
     }
 }
 
-tasks.named<Test>("test") {
-    // Use JUnit Platform for unit tests.
-    useJUnitPlatform()
+tasks.withType<JavaCompile>().configureEach {
+    options.encoding = "UTF-8"
+}
+
+tasks.withType<Jar>().configureEach {
+    archiveBaseName.set("FormatZip")
+    archiveVersion.set("1.0.0")
+    archiveExtension.set("jar")
+}
+
+tasks.jar {
+    manifest {
+        attributes["Main-Class"] = "com.xrea.s8.otokiti.formatzip.App"
+        attributes["Class-Path"] = configurations.runtimeClasspath.get().joinToString(separator = " ") { file -> "libs/${file.name}" }
+    }
+}
+
+tasks.register<Copy>("copyJar") {
+    val libsDir = file("$buildDir/libs/libs")
+    from(configurations.runtimeClasspath)
+    into(libsDir)
+
+	mustRunAfter("build")
+}
+
+tasks.named("jar") {
+	mustRunAfter("copyJar")
+}
+
+tasks.register("generatedJar") {
+	group = "build"
+	description = "Cleans, builds, and copies the jar with dependencies."
+
+    dependsOn("clean")
+    dependsOn("build")
+    dependsOn("copyJar")
+    dependsOn("jar")
 }
