@@ -6,7 +6,7 @@
  */
 
 plugins {
-    `java-library`
+    id("java-library")
 }
 
 repositories {
@@ -32,9 +32,9 @@ tasks.withType<JavaCompile>().configureEach {
 }
 
 tasks.withType<Jar>().configureEach {
-    archiveBaseName.set("FormatZip")
-    archiveVersion.set("1.0.0")
-    archiveExtension.set("jar")
+    archiveBaseName = "FormatZip"
+    archiveVersion = "1.0.0"
+    archiveExtension = "jar"
 }
 
 tasks.jar {
@@ -45,23 +45,36 @@ tasks.jar {
 }
 
 tasks.register<Copy>("copyJar") {
+	group = "build"
     val libsDir = file("$buildDir/libs/libs")
     from(configurations.runtimeClasspath)
     into(libsDir)
-
-	mustRunAfter("build")
 }
 
-tasks.named("jar") {
-	mustRunAfter("copyJar")
-}
 
 tasks.register("generatedJar") {
 	group = "build"
 	description = "Cleans, builds, and copies the jar with dependencies."
 
     dependsOn("clean")
-    dependsOn("build")
+    dependsOn("compileJava")
+    dependsOn("processResources")
     dependsOn("copyJar")
     dependsOn("jar")
+}
+
+tasks.named("compileJava") {
+	mustRunAfter("clean")
+}
+
+tasks.named("processResources") {
+	mustRunAfter("compileJava")
+}
+
+tasks.named("copyJar") {
+	mustRunAfter("processResources")
+}
+
+tasks.named("jar") {
+	mustRunAfter("copyJar")
 }
