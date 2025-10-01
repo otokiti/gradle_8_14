@@ -25,4 +25,4 @@ plugins {
 
 rootProject.name = "gradle_8_14"
 include("lib")
->>>>>>> branch 'master' of https://github.com/otokiti/gradle_8_14.git
+include("formatzip")
