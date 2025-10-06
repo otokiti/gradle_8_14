@@ -13,3 +13,4 @@ plugins {
 rootProject.name = "gradle_8_14"
 include("lib")
 include("formatzip")
+include("bakusaiview")
