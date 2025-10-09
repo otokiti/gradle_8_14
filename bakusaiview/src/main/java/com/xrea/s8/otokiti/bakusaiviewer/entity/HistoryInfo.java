@@ -1,21 +1,21 @@
 package com.xrea.s8.otokiti.bakusaiviewer.entity;
 
 /**
- * 地域情報.
+ * 履歴情報.
  *
  * @author otokiti
  */
-public class AreaInfo {
+public class HistoryInfo {
 
-	/** 名称 */
+	// 名称
 	private String name;
-	/** URL */
+	// URL
 	private String url;
 
 	/**
 	 * コンストラクタ.
 	 **/
-	public AreaInfo() {
+	public HistoryInfo() {
 		this.name = null;
 		this.url = null;
 	}
@@ -26,7 +26,7 @@ public class AreaInfo {
 	 * @param name 名称
 	 * @param url URL
 	 */
-	public AreaInfo(final String name, final String url) {
+	public HistoryInfo(final String name, final String url) {
 		this.name = name;
 		this.url = url;
 	}

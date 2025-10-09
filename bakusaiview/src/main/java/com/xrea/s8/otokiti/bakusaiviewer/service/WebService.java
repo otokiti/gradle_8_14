@@ -7,7 +7,9 @@ import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -15,6 +17,7 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import com.xrea.s8.otokiti.bakusaiviewer.App;
+import com.xrea.s8.otokiti.bakusaiviewer.entity.HistoryInfo;
 import com.xrea.s8.otokiti.bakusaiviewer.entity.ProxyInfo;
 
 import okhttp3.Authenticator;
@@ -37,12 +40,16 @@ public class WebService {
 	private Map<String, String> cache;
 	// クライアント
 	private OkHttpClient client;
+	// プロパティサービス
+	private PropertyService service;
+	// 履歴
+	private List<HistoryInfo> history;
 
 	/**
 	 * 遅延インスタンス生成.
 	 */
 	private static class InstanceHolder {
-		private final static WebService INSTANCE = new WebService(PropertyService.getInstance().loadConfig());
+		private final static WebService INSTANCE = new WebService(PropertyService.getInstance());
 	}
 
 	/**
@@ -57,11 +64,14 @@ public class WebService {
 	/**
 	 * コンストラクタ.
 	 *
-	 * @param proxyInfo プロキシ情報
+	 * @param service プロパティファイル入出力サービス
 	 */
-	public WebService(final ProxyInfo proxyInfo) {
+	public WebService(PropertyService service) {
+		this.service = service;
+		this.history = service.loadHistory();
+
 		this.cache = new HashMap<>();
-		this.client = this.createOkHttpClient(proxyInfo);
+		this.client = this.createOkHttpClient(service.loadProxy());
 	}
 
 	/**
@@ -133,5 +143,27 @@ public class WebService {
 		if (!this.cache.containsKey(address)) {
 			this.cache.put(address, response);
 		}
+	}
+
+	/**
+	 * 履歴情報リストの取得.
+	 *
+	 * @return 履歴情報リスト
+	 */
+	public List<HistoryInfo> getHistory() {
+		if (this.history == null) {
+			this.history = new ArrayList<>();
+		}
+		return this.history;
+	}
+
+	/**
+	 * 履歴情報リストの保存.
+	 *
+	 * @param history 履歴情報リスト
+	 */
+	public void saveHistory(List<HistoryInfo> history) {
+		this.service.saveHistory(history);
+		this.history = history;
 	}
 }

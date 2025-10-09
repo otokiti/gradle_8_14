@@ -9,7 +9,9 @@ public class App {
 	public static final String COPYRIGHT = "Copyright (c) 2025 otokiti All rights reserved.";
 
 	/** 設定ファイル */
-	public static final String CONFIG_FILE = "/config.properties";
+	public static final String CONFIG_FILE = "/config.json";
+	/** 履歴ファイル */
+	public static final String HISTORY_FILE = "/history.json";
 	/** ログファイル */
 	public static final String LOG_PATH = "./log";
 	/** キャッシュフォルダ */

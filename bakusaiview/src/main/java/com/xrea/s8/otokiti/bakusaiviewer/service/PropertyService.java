@@ -3,9 +3,13 @@ package com.xrea.s8.otokiti.bakusaiviewer.service;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.List;
 import java.util.Properties;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xrea.s8.otokiti.bakusaiviewer.App;
+import com.xrea.s8.otokiti.bakusaiviewer.entity.HistoryInfo;
 import com.xrea.s8.otokiti.bakusaiviewer.entity.ProxyInfo;
 
 /**
@@ -36,6 +40,56 @@ public class PropertyService {
 	 */
 	private PropertyService() {
 		// 処理なし
+	}
+
+	/**
+	 * プロキシ情報の保存.
+	 *
+	 * @param proxyInfo プロキシ情報
+	 */
+	public ProxyInfo loadProxy() {
+		try {
+			File file = new File(System.getProperty("user.dir"), App.CONFIG_FILE);
+			if (!file.exists()) {
+				return null;
+			}
+			return new ObjectMapper().readerWithView(ProxyInfo.class).readValue(file, ProxyInfo.class);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	/**
+	 * 履歴情報の読み込み.
+	 *
+	 * @return 履歴情報リスト
+	 */
+	public List<HistoryInfo> loadHistory() {
+		try {
+			File file = new File(System.getProperty("user.dir"), App.HISTORY_FILE);
+			if (!file.exists()) {
+				return null;
+			}
+			return new ObjectMapper().readValue(file, new TypeReference<List<HistoryInfo>>() {});
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	/**
+	 * 履歴情報の読み込み.
+	 *
+	 * @return 履歴情報リスト
+	 */
+	public void saveHistory(List<HistoryInfo> historyInfoList) {
+		try {
+			File file = new File(System.getProperty("user.dir"), App.HISTORY_FILE);
+			new ObjectMapper().writerWithDefaultPrettyPrinter().writeValue(file, historyInfoList);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 
 	/**

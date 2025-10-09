@@ -22,6 +22,9 @@ dependencies {
 	implementation("org.jsoup:jsoup:1.21.2")
 	implementation("org.apache.commons:commons-lang3:3.19.0")
 	implementation("commons-io:commons-io:2.20.0")
+	implementation("com.fasterxml.jackson.core:jackson-core:2.20.0")
+	implementation("com.fasterxml.jackson.core:jackson-annotations:2.20")
+	implementation("com.fasterxml.jackson.core:jackson-databind:2.20.0")
 }
 
 // Apply a specific Java toolchain to ease working on different environments.

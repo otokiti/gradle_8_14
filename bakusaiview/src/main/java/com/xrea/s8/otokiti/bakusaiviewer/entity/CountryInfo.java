@@ -7,7 +7,7 @@ package com.xrea.s8.otokiti.bakusaiviewer.entity;
  */
 public class CountryInfo {
 
-	/** 国名称 */
+	/** 名称 */
 	private String name;
 	/** URL */
 	private String url;
@@ -23,7 +23,7 @@ public class CountryInfo {
 	/**
 	 * コンストラクタ.
 	 *
-	 * @param name 国名称
+	 * @param name 名称
 	 * @param url URL
 	 */
 	public CountryInfo(final String name, final String url) {
@@ -33,18 +33,18 @@ public class CountryInfo {
 
 	/** getter/setter */
 	/**
-	 * 国名称の取得.
+	 * 名称の取得.
 	 *
-	 * @return name 国名称
+	 * @return 名称
 	 */
 	public String getName() {
 		return name;
 	}
 
 	/**
-	 * 国名称の設定.
+	 * 名称の設定.
 	 *
-	 * @param name 国名称
+	 * @param name 名称
 	 */
 	public void setName(String name) {
 		this.name = name;

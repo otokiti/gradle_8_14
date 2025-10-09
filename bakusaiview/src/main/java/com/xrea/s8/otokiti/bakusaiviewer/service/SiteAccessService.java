@@ -3,10 +3,9 @@ package com.xrea.s8.otokiti.bakusaiviewer.service;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.TreeSet;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -16,6 +15,7 @@ import org.jsoup.select.Nodes;
 
 import com.xrea.s8.otokiti.bakusaiviewer.entity.AreaInfo;
 import com.xrea.s8.otokiti.bakusaiviewer.entity.CountryInfo;
+import com.xrea.s8.otokiti.bakusaiviewer.entity.HistoryInfo;
 import com.xrea.s8.otokiti.bakusaiviewer.entity.MenuInfo;
 import com.xrea.s8.otokiti.bakusaiviewer.entity.PageInfo;
 import com.xrea.s8.otokiti.bakusaiviewer.entity.ResponseInfo;
@@ -182,67 +182,67 @@ public class SiteAccessService {
 		return list;
 	}
 
-	public List<ResponseInfo> getResponseInfoList(final ThreadInfo threadInfo) throws URISyntaxException, IOException {
-		List<PageInfo> pageList = getPageList(threadInfo);
+	/**
+	 * 掲示板一覧の取得.
+	 *
+	 * @param address アドレス
+	 * @return 掲示板一覧
+	 */
+	public List<ThreadInfo> getThreadList(String address) {
+		// ページ一覧の取得
+		List<PageInfo> pageList = getThreadPageList(address);
 
-		List<ResponseInfo> resList = getResponseInfo(pageList);
-		Collections.sort(resList);
-		for (ResponseInfo res : resList) {
-			System.out.println(res.getId() + " " + res.getCommentTime());
-			System.out.println(res.getComment());
-			System.out.println(res.getCommentAuthor());
-			System.out.println("----------------------------------------------------------");
+		List<ThreadInfo> list = new ArrayList<>();
+		for (PageInfo page : pageList) {
+			Nodes<Node> nodes = page.getDoc().selectNodes("#inner_container #columnWrap #thrListWrap #thrListInner a");
+			for (Node node : nodes) {
+				Element element = (Element) node;
+				ThreadInfo info = new ThreadInfo();
+				info.setName(element.attr("title"));
+				info.setUrl(element.attr("abs:href"));
+				list.add(info);
+			}
 		}
 
-		return null;
+		return list;
 	}
 
-	public List<PageInfo> getPageList(final ThreadInfo threadInfo) {
+
+	/**
+	 * 掲示板ページ一覧の取得.
+	 *
+	 * @param address アドレス
+	 * @return ページ一覧
+	 */
+	private List<PageInfo> getThreadPageList(String address) {
 		List<PageInfo> list = new ArrayList<>();
-
 		try {
-			String address = threadInfo.getUrl();
-			String res = this.getHttpResponse(address);
-			Document doc = getDocument(res, address);
+			Document doc = this.getDocument(this.getHttpResponse(address), address);
 
-			Set<String> set = new TreeSet<>();
+			Set<String> set = new HashSet<>();
 
-			threadInfo.setTitle(doc.selectFirst("#inner_container #title_thr .thr_status_icon").text());
+			// 現在開いているページを登録
 			list.add(new PageInfo(address, doc));
 
-			Nodes<Node> nodes = doc.selectNodes("#inner_container .reslist_td .paging .paging_prevlink a");
+			List<Nodes<Node>> nodesList = new ArrayList<>();
+			// 前ページを取得
+			Nodes<Node> nodes = doc.selectNodes("#inner_container #columnWrap .paging .paging_prevlink a");
 			if (nodes != null && !nodes.isEmpty()) {
-				for (Node node : nodes) {
-					Element e = node.parentElement().firstElementChild();
-					if (e != null) {
-						String link = e.attr("abs:href");
-						if (!link.isEmpty()) {
-							if (!set.contains(link)) {
-								set.add(link);
-								list.add(new PageInfo(link, getDocument(this.getHttpResponse(link), link)));
-							}
-						}
-					}
-				}
+				nodesList.add(nodes);
 			}
-			nodes = doc.selectNodes("#inner_container .reslist_td .paging .paging_numberlink a");
+			// 番号指定のページを取得
+			nodes = doc.selectNodes("#inner_container #columnWrap .paging .paging_numberlink a");
 			if (nodes != null && !nodes.isEmpty()) {
-				for (Node node : nodes) {
-					Element e = node.parentElement().firstElementChild();
-					if (e != null) {
-						String link = e.attr("abs:href");
-						if (!link.isEmpty()) {
-							if (!set.contains(link)) {
-								set.add(link);
-								list.add(new PageInfo(link, getDocument(this.getHttpResponse(link), link)));
-							}
-						}
-					}
-				}
+				nodesList.add(nodes);
 			}
-			nodes = doc.selectNodes("#inner_container .reslist_td .paging .paging_nextlink a");
+			// 次ページを取得
+			nodes = doc.selectNodes("#inner_container #columnWrap .paging .paging_nextlink a");
 			if (nodes != null && !nodes.isEmpty()) {
-				for (Node node : nodes) {
+				nodesList.add(nodes);
+			}
+
+			for (Nodes<Node> nodez : nodesList) {
+				for (Node node : nodez) {
 					Element e = node.parentElement().firstElementChild();
 					if (e != null) {
 						String link = e.attr("abs:href");
@@ -262,32 +262,44 @@ public class SiteAccessService {
 		return list;
 	}
 
-	public List<ResponseInfo> getResponseInfo(final List<PageInfo> pageList) {
+	/**
+	 * レス一覧の取得.
+	 *
+	 * @param address アドレス
+	 * @return レス一覧
+	 */
+	public List<ResponseInfo> getResponseList(String address) {
+		// ページ一覧の取得
+		List<PageInfo> pageList = getResponsePageList(address);
+
 		List<ResponseInfo> list = new ArrayList<>();
 		for (PageInfo page : pageList) {
-			Document doc = page.getDoc();
-			Nodes<Node> nodes = doc.selectNodes("#inner_container #res_list .res_list_article");
+			Nodes<Node> nodes = page.getDoc().selectNodes("#inner_container #res_list .res_list_article");
 			for (Node node : nodes) {
 				ResponseInfo res = new ResponseInfo();
 				Element element = (Element) node;
-				res.setId(element.selectFirst(".resnumb a").text());
+				// ID
+				res.setResnumb(element.selectFirst(".resnumb a").text());
+				// 投稿日時
 				Element commentTime = element.selectFirst(".res_meta_wrap span[itemprop = commentTime]");
 				if (commentTime != null) {
 					res.setCommentTime(commentTime.text());
 				} else {
 					res.setCommentTime("");
 				}
-				Element comment = element.selectFirst(".resbody");
+				// コメント
+				Element comment = element.selectFirst(".body div[itemprop = commentText]");
 				if (comment != null) {
-					res.setComment(comment.wholeText().replaceAll("\r\n", ""));
+					res.setCommentText(comment.wholeText().replaceAll("\r\n", ""));
 				} else {
-					res.setComment(element.selectFirst(".resbody").text());
+					res.setCommentText(element.selectFirst(".resbody").text());
 				}
+				// 投稿者
 				Element commentAuthor = element.selectFirst(".name_goodbad_box .name-wapper .name");
 				if (commentAuthor != null) {
-					res.setCommentAuthor(commentAuthor.text());
+					res.setName(commentAuthor.text());
 				} else {
-					res.setCommentAuthor("");
+					res.setName("");
 				}
 
 				list.add(res);
@@ -295,5 +307,77 @@ public class SiteAccessService {
 		}
 
 		return list;
+	}
+
+	/**
+	 * レスページ一覧の取得.
+	 *
+	 * @param address アドレス
+	 * @return ページ一覧
+	 */
+	private List<PageInfo> getResponsePageList(String address) {
+		List<PageInfo> list = new ArrayList<>();
+		try {
+			Document doc = this.getDocument(this.getHttpResponse(address), address);
+
+			Set<String> set = new HashSet<>();
+
+			// 現在開いているページを登録
+			list.add(new PageInfo(address, doc));
+
+			List<Nodes<Node>> nodesList = new ArrayList<>();
+			// 前ページを取得
+			Nodes<Node> nodes = doc.selectNodes("#inner_container .reslist_td .paging .paging_prevlink a");
+			if (nodes != null && !nodes.isEmpty()) {
+				nodesList.add(nodes);
+			}
+			// 番号指定のページを取得
+			nodes = doc.selectNodes("#inner_container .reslist_td .paging .paging_numberlink a");
+			if (nodes != null && !nodes.isEmpty()) {
+				nodesList.add(nodes);
+			}
+			// 次ページを取得
+			nodes = doc.selectNodes("#inner_container .reslist_td .paging .paging_nextlink a");
+			if (nodes != null && !nodes.isEmpty()) {
+				nodesList.add(nodes);
+			}
+
+			for (Nodes<Node> nodez : nodesList) {
+				for (Node node : nodez) {
+					Element e = node.parentElement().firstElementChild();
+					if (e != null) {
+						String link = e.attr("abs:href");
+						if (!link.isEmpty()) {
+							if (!set.contains(link)) {
+								set.add(link);
+								list.add(new PageInfo(link, getDocument(this.getHttpResponse(link), link)));
+							}
+						}
+					}
+				}
+			}
+		} catch (URISyntaxException | IOException e) {
+			e.printStackTrace();
+		}
+
+		return list;
+	}
+
+	/**
+	 * 履歴情報リストの取得.
+	 *
+	 * @return 履歴情報リスト
+	 */
+	public List<HistoryInfo> getHistory() {
+		return this.webService.getHistory();
+	}
+
+	/**
+	 * 履歴情報リストの保存.
+	 *
+	 * @param history 履歴情報リスト
+	 */
+	public void saveHistory(List<HistoryInfo> history) {
+		this.webService.saveHistory(history);
 	}
 }

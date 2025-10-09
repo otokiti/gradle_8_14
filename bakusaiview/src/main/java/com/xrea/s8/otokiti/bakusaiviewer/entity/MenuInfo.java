@@ -7,7 +7,7 @@ package com.xrea.s8.otokiti.bakusaiviewer.entity;
  */
 public class MenuInfo {
 
-	// メニュー名称
+	// 名称
 	private String name;
 	// URL
 	private String url;
@@ -23,7 +23,7 @@ public class MenuInfo {
 	/**
 	 * コンストラクタ.
 	 *
-	 * @param name メニュー名称
+	 * @param name 名称
 	 * @param url URL
 	 */
 	public MenuInfo(final String name, final String url) {
@@ -33,18 +33,18 @@ public class MenuInfo {
 
 	/** getter/setter */
 	/**
-	 * メニュー名称の取得.
+	 * 名称の取得.
 	 *
-	 * @return メニュー名称
+	 * @return 名称
 	 */
 	public String getName() {
 		return name;
 	}
 
 	/**
-	 * メニュー名称の設定.
+	 * 名称の設定.
 	 *
-	 * @param name メニュー名称
+	 * @param name 名称
 	 */
 	public void setName(String name) {
 		this.name = name;

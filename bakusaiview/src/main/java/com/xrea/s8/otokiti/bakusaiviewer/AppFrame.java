@@ -3,6 +3,7 @@ package com.xrea.s8.otokiti.bakusaiviewer;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.util.ArrayDeque;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.List;
 
@@ -14,12 +15,17 @@ import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JSplitPane;
 import javax.swing.ListModel;
 import javax.swing.ListSelectionModel;
+import javax.swing.SwingWorker;
 
 import com.xrea.s8.otokiti.bakusaiviewer.entity.AreaInfo;
 import com.xrea.s8.otokiti.bakusaiviewer.entity.CountryInfo;
+import com.xrea.s8.otokiti.bakusaiviewer.entity.HistoryInfo;
 import com.xrea.s8.otokiti.bakusaiviewer.entity.MenuInfo;
+import com.xrea.s8.otokiti.bakusaiviewer.entity.ResponseInfo;
+import com.xrea.s8.otokiti.bakusaiviewer.entity.ThreadInfo;
 import com.xrea.s8.otokiti.bakusaiviewer.service.SiteAccessService;
 
 public class AppFrame extends JFrame {
@@ -49,6 +55,8 @@ public class AppFrame extends JFrame {
 	private SiteAccessService service;
 	// メインパネル
 	private JPanel mainPnl;
+	// 履歴パネル
+	private JPanel historyPnl;
 	// メッセージラベル
 	private JLabel msgLbl;
 	// 戻るボタン
@@ -75,25 +83,40 @@ public class AppFrame extends JFrame {
 
 		this.msgLbl = new JLabel("");
 		this.mainPnl = new JPanel();
+		this.historyPnl = new JPanel();
 		this.backBtn = new JButton("戻る");
 		this.backBtn.addActionListener(e -> {
 			this.targetUrl = this.urlHistory.pop();
-			if (this.targetUrl.equals(App.BASE_URL)) {
-				this.reloadPage(PageMode.COUNTRY);
-			} else if (this.targetUrl.indexOf("acode=") >= 0) {
-				this.reloadPage(PageMode.MENU);
+			if (this.urlHistory.isEmpty()) {
+				this.backBtn.setEnabled(false);
+			}
+
+			if (this.targetUrl.indexOf("tid=") >= 0) {
+				this.reloadPage(PageMode.RESPONSE);
+			} else if (this.targetUrl.indexOf("bid=") >= 0) {
+				this.reloadPage(PageMode.THREAD);
 			} else if (this.targetUrl.indexOf("ctgid=") >= 0) {
 				this.reloadPage(PageMode.AREA);
+			} else if (this.targetUrl.indexOf("acode=") >= 0) {
+				this.reloadPage(PageMode.MENU);
+			} else if (this.targetUrl.equals(App.BASE_URL)) {
+				this.reloadPage(PageMode.COUNTRY);
 			} else {
 				this.reloadPage(PageMode.AREA);
 			}
 		});
 
+		JSplitPane splitPnl = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT);
+		splitPnl.setDividerSize(5);
+		splitPnl.setDividerLocation(500);
+		splitPnl.setLeftComponent(this.mainPnl);
+		splitPnl.setRightComponent(this.historyPnl);
+
 		JPanel basePnl = new JPanel();
 		basePnl.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
 		basePnl.setLayout(new BorderLayout());
-		basePnl.add(this.mainPnl, BorderLayout.CENTER);
-		basePnl.add(this.backBtn, BorderLayout.EAST);
+		basePnl.add(splitPnl, BorderLayout.CENTER);
+		basePnl.add(this.backBtn, BorderLayout.WEST);
 		basePnl.add(this.msgLbl, BorderLayout.SOUTH);
 
 		JLabel copyrightLbl = new JLabel(App.COPYRIGHT);
@@ -111,20 +134,9 @@ public class AppFrame extends JFrame {
 		// 初期URL設定
 		this.targetUrl = App.BASE_URL;
 		this.urlHistory = new ArrayDeque<>();
+		this.backBtn.setEnabled(false);
 		// サイトアクセスサービスの取得
 		this.service = SiteAccessService.getInstance();
-
-//		try {
-//			SiteAccessService service = SiteAccessService.getInstance();
-//
-//			ThreadInfo threadInfo = new ThreadInfo(null, "https://bakusai.com/thr_res/acode=5/ctgid=103/bid=340/tid=12691711/");
-//
-//			service.getResponseInfoList(threadInfo);
-//
-//		} catch (IOException | URISyntaxException e) {
-//			// TODO 自動生成された catch ブロック
-//			e.printStackTrace();
-//		}
 	}
 
 	/**
@@ -143,7 +155,6 @@ public class AppFrame extends JFrame {
 	 * @param pageMode ページモード
 	 */
 	private void reloadPage(PageMode pageMode) {
-		this.mainPnl.removeAll();
 		switch (pageMode) {
 			case COUNTRY:
 				// 国一覧画面再表示
@@ -158,28 +169,75 @@ public class AppFrame extends JFrame {
 				this.reloadMenuPage();
 				break;
 			case THREAD:
+				// 掲示板一覧画面再表示
+				this.reloadThreadPage();
+				break;
+			case RESPONSE:
+				// レス一覧画面再表示
+				this.reloadResponsePage();
 				break;
 			default:
 				break;
 		}
+
+		this.reloadHistoryPage();
 		this.display();
+	}
+
+	/**
+	 * 履歴画面再表示処理.
+	 */
+	private void reloadHistoryPage() {
+		ListModel<HistoryInfo> listModel = new DefaultListModel<>();
+		JList<HistoryInfo> historyList = new JList<>(listModel);
+
+		DefaultListModel<HistoryInfo> model = ((DefaultListModel<HistoryInfo>) listModel);
+		for (HistoryInfo info : service.getHistory()) {
+			model.addElement(info);
+		}
+		historyList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+
+		JScrollPane scrollPnl = new JScrollPane();
+		scrollPnl.setViewportView(historyList);
+
+		this.historyPnl.removeAll();
+		this.historyPnl.setLayout(new BorderLayout());
+		this.historyPnl.add(scrollPnl, BorderLayout.CENTER);
 	}
 
 	/**
 	 * 国一覧画面再表示処理.
 	 */
 	private void reloadCountryPage() {
-		this.backBtn.setEnabled(false);
-
-		// 国一覧の取得
-		List<CountryInfo> list = this.service.getCountryList(this.targetUrl);
-
 		ListModel<CountryInfo> listModel = new DefaultListModel<>();
-		for (CountryInfo info : list) {
-			((DefaultListModel<CountryInfo>) listModel).addElement(info);
-		}
-
 		JList<CountryInfo> countryList = new JList<>(listModel);
+
+		SwingWorker<Integer, String> worker = new SwingWorker<>() {
+			@Override
+			protected Integer doInBackground() throws Exception {
+				publish("国一覧を取得中...");
+				// 国一覧の取得
+				DefaultListModel<CountryInfo> model = ((DefaultListModel<CountryInfo>) listModel);
+				for (CountryInfo info : service.getCountryList(targetUrl)) {
+					model.addElement(info);
+				}
+				return null;
+			}
+
+			protected void process(List<String> chunks) {
+				for (String msg : chunks) {
+					msgLbl.setText(msg);
+				}
+			}
+
+			@Override
+			protected void done() {
+				publish("");
+				countryList.requestFocusInWindow();
+			}
+		};
+		worker.execute();
+
 		countryList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		countryList.addListSelectionListener(e -> {
 			if (!e.getValueIsAdjusting()) {
@@ -199,6 +257,7 @@ public class AppFrame extends JFrame {
 		JScrollPane scrollPnl = new JScrollPane();
 		scrollPnl.setViewportView(countryList);
 
+		this.mainPnl.removeAll();
 		this.mainPnl.setLayout(new BorderLayout());
 		this.mainPnl.add(scrollPnl, BorderLayout.CENTER);
 	}
@@ -207,14 +266,35 @@ public class AppFrame extends JFrame {
 	 * 地域一覧画面再表示処理.
 	 */
 	private void reloadAreaPage() {
-		List<AreaInfo> list = this.service.getAreaList(this.targetUrl);
-
 		ListModel<AreaInfo> listModel = new DefaultListModel<>();
-		for (AreaInfo info : list) {
-			((DefaultListModel<AreaInfo>) listModel).addElement(info);
-		}
-
 		JList<AreaInfo> areaList = new JList<>(listModel);
+
+		SwingWorker<Integer, String> worker = new SwingWorker<>() {
+			@Override
+			protected Integer doInBackground() throws Exception {
+				publish("地域一覧を取得中...");
+				// 地域一覧の取得
+				DefaultListModel<AreaInfo> model = ((DefaultListModel<AreaInfo>) listModel);
+				for (AreaInfo info : service.getAreaList(targetUrl)) {
+					model.addElement(info);
+				}
+				return null;
+			}
+
+			protected void process(List<String> chunks) {
+				for (String msg : chunks) {
+					msgLbl.setText(msg);
+				}
+			}
+
+			@Override
+			protected void done() {
+				publish("");
+				areaList.requestFocusInWindow();
+			}
+		};
+		worker.execute();
+
 		areaList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		areaList.addListSelectionListener(e -> {
 			if (!e.getValueIsAdjusting()) {
@@ -234,6 +314,7 @@ public class AppFrame extends JFrame {
 		JScrollPane scrollPnl = new JScrollPane();
 		scrollPnl.setViewportView(areaList);
 
+		this.mainPnl.removeAll();
 		this.mainPnl.setLayout(new BorderLayout());
 		this.mainPnl.add(scrollPnl, BorderLayout.CENTER);
 	}
@@ -242,18 +323,39 @@ public class AppFrame extends JFrame {
 	 * メニュー一覧画面再表示処理.
 	 */
 	private void reloadMenuPage() {
-		List<MenuInfo> list = this.service.getMenuList(this.targetUrl);
-
 		ListModel<MenuInfo> listModel = new DefaultListModel<>();
-		for (MenuInfo info : list) {
-			((DefaultListModel<MenuInfo>) listModel).addElement(info);
-		}
+		JList<MenuInfo> menuList = new JList<>(listModel);
 
-		JList<MenuInfo> areaList = new JList<>(listModel);
-		areaList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-		areaList.addListSelectionListener(e -> {
+		SwingWorker<Integer, String> worker = new SwingWorker<>() {
+			@Override
+			protected Integer doInBackground() throws Exception {
+				publish("メニュー一覧を取得中...");
+				// メニュー一覧の取得
+				DefaultListModel<MenuInfo> model = ((DefaultListModel<MenuInfo>) listModel);
+				for (MenuInfo info : service.getMenuList(targetUrl)) {
+					model.addElement(info);
+				}
+				return null;
+			}
+
+			protected void process(List<String> chunks) {
+				for (String msg : chunks) {
+					msgLbl.setText(msg);
+				}
+			}
+
+			@Override
+			protected void done() {
+				publish("");
+				menuList.requestFocusInWindow();
+			}
+		};
+		worker.execute();
+
+		menuList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+		menuList.addListSelectionListener(e -> {
 			if (!e.getValueIsAdjusting()) {
-				MenuInfo selected = areaList.getSelectedValue();
+				MenuInfo selected = menuList.getSelectedValue();
 				if (selected != null) {
 					this.urlHistory.push(this.targetUrl);
 					this.targetUrl = selected.getUrl();
@@ -263,9 +365,82 @@ public class AppFrame extends JFrame {
 			}
 		});
 		JScrollPane scrollPnl = new JScrollPane();
-		scrollPnl.setViewportView(areaList);
+		scrollPnl.setViewportView(menuList);
 
+		this.mainPnl.removeAll();
 		this.mainPnl.setLayout(new BorderLayout());
 		this.mainPnl.add(scrollPnl, BorderLayout.CENTER);
+	}
+
+	/**
+	 * 掲示板一覧画面再表示処理.
+	 */
+	private void reloadThreadPage() {
+		ListModel<ThreadInfo> listModel = new DefaultListModel<>();
+		JList<ThreadInfo> threadList = new JList<>(listModel);
+
+		SwingWorker<Integer, String> worker = new SwingWorker<>() {
+			@Override
+			protected Integer doInBackground() throws Exception {
+				publish("掲示板一覧を取得中...");
+				// 掲示板一覧の取得
+				DefaultListModel<ThreadInfo> model = ((DefaultListModel<ThreadInfo>) listModel);
+				for (ThreadInfo info : service.getThreadList(targetUrl)) {
+					model.addElement(info);
+				}
+				return null;
+			}
+
+			protected void process(List<String> chunks) {
+				for (String msg : chunks) {
+					msgLbl.setText(msg);
+				}
+			}
+
+			@Override
+			protected void done() {
+				publish("");
+				threadList.requestFocusInWindow();
+			}
+		};
+		worker.execute();
+
+		threadList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+		threadList.addListSelectionListener(e -> {
+			if (!e.getValueIsAdjusting()) {
+				ThreadInfo selected = threadList.getSelectedValue();
+				if (selected != null) {
+					HistoryInfo info = new HistoryInfo(selected.getName(), selected.getUrl());
+					List<HistoryInfo> list = service.getHistory();
+					list.add(info);
+					service.saveHistory(list);
+
+					this.targetUrl = selected.getUrl();
+					this.backBtn.setEnabled(true);
+					this.reloadPage(PageMode.RESPONSE);
+				}
+			}
+		});
+		JScrollPane scrollPnl = new JScrollPane();
+		scrollPnl.setViewportView(threadList);
+
+		this.mainPnl.removeAll();
+		this.mainPnl.setLayout(new BorderLayout());
+		this.mainPnl.add(scrollPnl, BorderLayout.CENTER);
+	}
+
+	/**
+	 * レス一覧画面再表示処理.
+	 */
+	private void reloadResponsePage() {
+		List<ResponseInfo> list = this.service.getResponseList(this.targetUrl);
+
+		Collections.sort(list);
+		for (ResponseInfo res : list) {
+			System.out.println(res.getResnumb() + " " + res.getCommentTime());
+			System.out.println(res.getCommentText());
+			System.out.println(res.getName());
+			System.out.println("----------------------------------------------------------");
+		}
 	}
 }
