@@ -2,10 +2,13 @@ package com.xrea.s8.otokiti.bakusaiviewer;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.ArrayDeque;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 import javax.swing.BorderFactory;
 import javax.swing.DefaultListModel;
@@ -16,7 +19,6 @@ import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
-import javax.swing.ListModel;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingWorker;
 
@@ -188,12 +190,11 @@ public class AppFrame extends JFrame {
 	 * 履歴画面再表示処理.
 	 */
 	private void reloadHistoryPage() {
-		ListModel<HistoryInfo> listModel = new DefaultListModel<>();
+		DefaultListModel<HistoryInfo> listModel = new DefaultListModel<>();
 		JList<HistoryInfo> historyList = new JList<>(listModel);
 
-		DefaultListModel<HistoryInfo> model = ((DefaultListModel<HistoryInfo>) listModel);
 		for (HistoryInfo info : service.getHistory()) {
-			model.addElement(info);
+			listModel.addElement(info);
 		}
 		historyList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
@@ -209,19 +210,39 @@ public class AppFrame extends JFrame {
 	 * 国一覧画面再表示処理.
 	 */
 	private void reloadCountryPage() {
-		ListModel<CountryInfo> listModel = new DefaultListModel<>();
+		DefaultListModel<CountryInfo> listModel = new DefaultListModel<>();
 		JList<CountryInfo> countryList = new JList<>(listModel);
 
-		SwingWorker<Integer, String> worker = new SwingWorker<>() {
+//		SwingWorker<Integer, String> worker = new SwingWorker<>() {
+//			@Override
+//			protected Integer doInBackground() throws Exception {
+//				publish("国一覧を取得中...");
+//				// 国一覧の取得
+//				for (CountryInfo info : service.getCountryList(targetUrl)) {
+//					listModel.addElement(info);
+//				}
+//				return null;
+//			}
+//
+//			protected void process(List<String> chunks) {
+//				for (String msg : chunks) {
+//					msgLbl.setText(msg);
+//				}
+//			}
+//
+//			@Override
+//			protected void done() {
+//				publish("");
+//				countryList.doLayout();
+//				countryList.requestFocusInWindow();
+//			}
+//		};
+		SwingWorker<List<CountryInfo>, String> worker = new SwingWorker<>() {
 			@Override
-			protected Integer doInBackground() throws Exception {
+			protected List<CountryInfo> doInBackground() throws Exception {
 				publish("国一覧を取得中...");
 				// 国一覧の取得
-				DefaultListModel<CountryInfo> model = ((DefaultListModel<CountryInfo>) listModel);
-				for (CountryInfo info : service.getCountryList(targetUrl)) {
-					model.addElement(info);
-				}
-				return null;
+				return service.getCountryList(targetUrl);
 			}
 
 			protected void process(List<String> chunks) {
@@ -232,8 +253,14 @@ public class AppFrame extends JFrame {
 
 			@Override
 			protected void done() {
+				try {
+					for (CountryInfo info : get()) {
+						listModel.addElement(info);
+					}
+				} catch (InterruptedException | ExecutionException e) {
+					e.printStackTrace();
+				}
 				publish("");
-				countryList.requestFocusInWindow();
 			}
 		};
 		worker.execute();
@@ -266,19 +293,15 @@ public class AppFrame extends JFrame {
 	 * 地域一覧画面再表示処理.
 	 */
 	private void reloadAreaPage() {
-		ListModel<AreaInfo> listModel = new DefaultListModel<>();
+		DefaultListModel<AreaInfo> listModel = new DefaultListModel<>();
 		JList<AreaInfo> areaList = new JList<>(listModel);
 
-		SwingWorker<Integer, String> worker = new SwingWorker<>() {
+		SwingWorker<List<AreaInfo>, String> worker = new SwingWorker<>() {
 			@Override
-			protected Integer doInBackground() throws Exception {
+			protected List<AreaInfo> doInBackground() throws Exception {
 				publish("地域一覧を取得中...");
 				// 地域一覧の取得
-				DefaultListModel<AreaInfo> model = ((DefaultListModel<AreaInfo>) listModel);
-				for (AreaInfo info : service.getAreaList(targetUrl)) {
-					model.addElement(info);
-				}
-				return null;
+				return service.getAreaList(targetUrl);
 			}
 
 			protected void process(List<String> chunks) {
@@ -289,8 +312,14 @@ public class AppFrame extends JFrame {
 
 			@Override
 			protected void done() {
+				try {
+					for (AreaInfo info : get()) {
+						listModel.addElement(info);
+					}
+				} catch (InterruptedException | ExecutionException e) {
+					e.printStackTrace();
+				}
 				publish("");
-				areaList.requestFocusInWindow();
 			}
 		};
 		worker.execute();
@@ -323,19 +352,15 @@ public class AppFrame extends JFrame {
 	 * メニュー一覧画面再表示処理.
 	 */
 	private void reloadMenuPage() {
-		ListModel<MenuInfo> listModel = new DefaultListModel<>();
+		DefaultListModel<MenuInfo> listModel = new DefaultListModel<>();
 		JList<MenuInfo> menuList = new JList<>(listModel);
 
-		SwingWorker<Integer, String> worker = new SwingWorker<>() {
+		SwingWorker<List<MenuInfo>, String> worker = new SwingWorker<>() {
 			@Override
-			protected Integer doInBackground() throws Exception {
+			protected List<MenuInfo> doInBackground() throws Exception {
 				publish("メニュー一覧を取得中...");
 				// メニュー一覧の取得
-				DefaultListModel<MenuInfo> model = ((DefaultListModel<MenuInfo>) listModel);
-				for (MenuInfo info : service.getMenuList(targetUrl)) {
-					model.addElement(info);
-				}
-				return null;
+				return service.getMenuList(targetUrl);
 			}
 
 			protected void process(List<String> chunks) {
@@ -346,8 +371,14 @@ public class AppFrame extends JFrame {
 
 			@Override
 			protected void done() {
+				try {
+					for (MenuInfo info : get()) {
+						listModel.addElement(info);
+					}
+				} catch (InterruptedException | ExecutionException e) {
+					e.printStackTrace();
+				}
 				publish("");
-				menuList.requestFocusInWindow();
 			}
 		};
 		worker.execute();
@@ -376,19 +407,15 @@ public class AppFrame extends JFrame {
 	 * 掲示板一覧画面再表示処理.
 	 */
 	private void reloadThreadPage() {
-		ListModel<ThreadInfo> listModel = new DefaultListModel<>();
+		DefaultListModel<ThreadInfo> listModel = new DefaultListModel<>();
 		JList<ThreadInfo> threadList = new JList<>(listModel);
 
-		SwingWorker<Integer, String> worker = new SwingWorker<>() {
+		SwingWorker<List<ThreadInfo>, String> worker = new SwingWorker<>() {
 			@Override
-			protected Integer doInBackground() throws Exception {
+			protected List<ThreadInfo> doInBackground() throws Exception {
 				publish("掲示板一覧を取得中...");
 				// 掲示板一覧の取得
-				DefaultListModel<ThreadInfo> model = ((DefaultListModel<ThreadInfo>) listModel);
-				for (ThreadInfo info : service.getThreadList(targetUrl)) {
-					model.addElement(info);
-				}
-				return null;
+				return service.getThreadList(targetUrl);
 			}
 
 			protected void process(List<String> chunks) {
@@ -399,8 +426,14 @@ public class AppFrame extends JFrame {
 
 			@Override
 			protected void done() {
+				try {
+					for (ThreadInfo info : get()) {
+						listModel.addElement(info);
+					}
+				} catch (InterruptedException | ExecutionException e) {
+					e.printStackTrace();
+				}
 				publish("");
-				threadList.requestFocusInWindow();
 			}
 		};
 		worker.execute();
@@ -431,16 +464,41 @@ public class AppFrame extends JFrame {
 
 	/**
 	 * レス一覧画面再表示処理.
+	 * @throws IOException
+	 * @throws URISyntaxException
 	 */
 	private void reloadResponsePage() {
-		List<ResponseInfo> list = this.service.getResponseList(this.targetUrl);
+		SwingWorker<List<ResponseInfo>, String> worker = new SwingWorker<>() {
+			@Override
+			protected List<ResponseInfo> doInBackground() throws Exception {
+				publish("レス一覧を取得中...");
+				// レス一覧の取得
+				return service.getResponseList(targetUrl);
+			}
 
-		Collections.sort(list);
-		for (ResponseInfo res : list) {
-			System.out.println(res.getResnumb() + " " + res.getCommentTime());
-			System.out.println(res.getCommentText());
-			System.out.println(res.getName());
-			System.out.println("----------------------------------------------------------");
-		}
+			protected void process(List<String> chunks) {
+				for (String msg : chunks) {
+					msgLbl.setText(msg);
+				}
+			}
+
+			@Override
+			protected void done() {
+				try {
+					List<ResponseInfo> list = get();
+					Collections.sort(list);
+					for (ResponseInfo res : list) {
+						System.out.println(res.getResnumb() + " " + res.getCommentTime());
+						System.out.println(res.getCommentText());
+						System.out.println(res.getName());
+						System.out.println("----------------------------------------------------------");
+					}
+				} catch (InterruptedException | ExecutionException e) {
+					e.printStackTrace();
+				}
+				publish("");
+			}
+		};
+		worker.execute();
 	}
 }

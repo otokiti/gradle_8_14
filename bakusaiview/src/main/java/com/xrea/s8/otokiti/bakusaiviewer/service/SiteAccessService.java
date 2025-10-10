@@ -80,22 +80,19 @@ public class SiteAccessService {
 	 *
 	 * @param address アドレス
 	 * @return 国一覧
+	 * @throws IOException
+	 * @throws URISyntaxException
 	 */
-	public List<CountryInfo> getCountryList(String address) {
+	public List<CountryInfo> getCountryList(String address) throws URISyntaxException, IOException {
 		List<CountryInfo> list = new ArrayList<>();
-		try {
-			Document doc = this.getDocument(this.getHttpResponse(address), address);
-
-			Nodes<Node> nodes = doc.selectNodes("#chooseCountry div a");
-			for (Node node : nodes) {
-				Element element = (Element) node;
-				CountryInfo info = new CountryInfo();
-				info.setName(element.getElementsByTag("span").first().text());
-				info.setUrl(element.attr("abs:href"));
-				list.add(info);
-			}
-		} catch (URISyntaxException | IOException e) {
-			e.printStackTrace();
+		Document doc = this.getDocument(this.getHttpResponse(address), address);
+		Nodes<Node> nodes = doc.selectNodes("#chooseCountry div a");
+		for (Node node : nodes) {
+			Element element = (Element) node;
+			CountryInfo info = new CountryInfo();
+			info.setName(element.getElementsByTag("span").first().text());
+			info.setUrl(element.attr("abs:href"));
+			list.add(info);
 		}
 
 		return list;
@@ -106,22 +103,21 @@ public class SiteAccessService {
 	 *
 	 * @param address アドレス
 	 * @return 地域一覧
+	 * @throws IOException
+	 * @throws URISyntaxException
 	 */
-	public List<AreaInfo> getAreaList(String address) {
+	public List<AreaInfo> getAreaList(String address) throws URISyntaxException, IOException {
 		List<AreaInfo> list = new ArrayList<>();
-		try {
-			Document doc = this.getDocument(this.getHttpResponse(address), address);
-			Nodes<Node> nodes = doc.selectNodes("#areaMap #bakusaiMap_02 .index_area_wrapper a");
-			for (Node node : nodes) {
-				Element element = (Element) node;
-				AreaInfo info = new AreaInfo();
-				info.setName(element.getElementsByClass("area_name").first().text());
-				info.setUrl(element.attr("abs:href"));
-				list.add(info);
-			}
-		} catch (URISyntaxException | IOException e) {
-			e.printStackTrace();
+		Document doc = this.getDocument(this.getHttpResponse(address), address);
+		Nodes<Node> nodes = doc.selectNodes("#areaMap #bakusaiMap_02 .index_area_wrapper a");
+		for (Node node : nodes) {
+			Element element = (Element) node;
+			AreaInfo info = new AreaInfo();
+			info.setName(element.getElementsByClass("area_name").first().text());
+			info.setUrl(element.attr("abs:href"));
+			list.add(info);
 		}
+
 
 		return list;
 	}
@@ -131,30 +127,31 @@ public class SiteAccessService {
 	 *
 	 * @param address アドレス
 	 * @return メニュー一覧
+	 * @throws IOException
+	 * @throws URISyntaxException
 	 */
-	public List<MenuInfo> getMenuList(String address) {
-		List<MenuInfo> list = new ArrayList<>();
-		try {
-			Document doc = this.getDocument(this.getHttpResponse(address), address);
-			Element el = doc.selectFirst("frameset");
-			if (el != null) {
-				// フレームあり
-				String link = doc.selectFirst("frameset frameset frame").attr("abs:src");
-				return this.getMainMenuList(link);
-			}
-			Nodes<Node> nodes = doc.selectNodes("#ctgmenu .border_new .ctg_menu_list_link");
-			for (Node node : nodes) {
-				Element element = (Element) node;
-				MenuInfo info = new MenuInfo();
-				info.setName(element.getElementsByClass("ctg_menu_list_title").first().text());
-				info.setUrl(element.attr("abs:href"));
-				list.add(info);
-			}
-		} catch (URISyntaxException | IOException e) {
-			e.printStackTrace();
+	public List<MenuInfo> getMenuList(String address) throws URISyntaxException, IOException {
+		Document doc = this.getDocument(this.getHttpResponse(address), address);
+		Element el = doc.selectFirst("frameset");
+		if (el != null) {
+			// フレームあり
+			String link = doc.selectFirst("frameset frameset frame").attr("abs:src");
+			return this.getMainMenuList(link);
+		} else {
+			return this.getMainMenuList(address);
 		}
+	}
 
-		return list;
+	/**
+	 * メインメニュー一覧の取得.
+	 *
+	 * @param address アドレス
+	 * @return メインメニュー一覧
+	 * @throws IOException
+	 * @throws URISyntaxException
+	 */
+	public List<MenuInfo> getMainMenuList(String address) throws URISyntaxException, IOException {
+		return getMainMenuList(this.getDocument(this.getHttpResponse(address), address));
 	}
 
 	/**
@@ -163,20 +160,16 @@ public class SiteAccessService {
 	 * @param address アドレス
 	 * @return メインメニュー一覧
 	 */
-	public List<MenuInfo> getMainMenuList(String address) {
+	public List<MenuInfo> getMainMenuList(Document doc) {
 		List<MenuInfo> list = new ArrayList<>();
-		try {
-			Document doc = this.getDocument(this.getHttpResponse(address), address);
-			Nodes<Node> nodes = doc.selectNodes("#ctgmenu .border_new .ctg_menu_list_link");
-			for (Node node : nodes) {
-				Element element = (Element) node;
-				MenuInfo info = new MenuInfo();
-				info.setName(element.attr("title"));
-				info.setUrl(element.attr("abs:href"));
-				list.add(info);
-			}
-		} catch (URISyntaxException | IOException e) {
-			e.printStackTrace();
+
+		Nodes<Node> nodes = doc.selectNodes("#ctgmenu .border_new .ctg_menu_list_link");
+		for (Node node : nodes) {
+			Element element = (Element) node;
+			MenuInfo info = new MenuInfo();
+			info.setName(element.attr("title"));
+			info.setUrl(element.attr("abs:href"));
+			list.add(info);
 		}
 
 		return list;
@@ -187,8 +180,10 @@ public class SiteAccessService {
 	 *
 	 * @param address アドレス
 	 * @return 掲示板一覧
+	 * @throws IOException
+	 * @throws URISyntaxException
 	 */
-	public List<ThreadInfo> getThreadList(String address) {
+	public List<ThreadInfo> getThreadList(String address) throws URISyntaxException, IOException {
 		// ページ一覧の取得
 		List<PageInfo> pageList = getThreadPageList(address);
 
@@ -213,50 +208,48 @@ public class SiteAccessService {
 	 *
 	 * @param address アドレス
 	 * @return ページ一覧
+	 * @throws IOException
+	 * @throws URISyntaxException
 	 */
-	private List<PageInfo> getThreadPageList(String address) {
+	private List<PageInfo> getThreadPageList(String address) throws URISyntaxException, IOException {
 		List<PageInfo> list = new ArrayList<>();
-		try {
-			Document doc = this.getDocument(this.getHttpResponse(address), address);
+		Document doc = this.getDocument(this.getHttpResponse(address), address);
 
-			Set<String> set = new HashSet<>();
+		Set<String> set = new HashSet<>();
 
-			// 現在開いているページを登録
-			list.add(new PageInfo(address, doc));
+		// 現在開いているページを登録
+		list.add(new PageInfo(address, doc));
 
-			List<Nodes<Node>> nodesList = new ArrayList<>();
-			// 前ページを取得
-			Nodes<Node> nodes = doc.selectNodes("#inner_container #columnWrap .paging .paging_prevlink a");
-			if (nodes != null && !nodes.isEmpty()) {
-				nodesList.add(nodes);
-			}
-			// 番号指定のページを取得
-			nodes = doc.selectNodes("#inner_container #columnWrap .paging .paging_numberlink a");
-			if (nodes != null && !nodes.isEmpty()) {
-				nodesList.add(nodes);
-			}
-			// 次ページを取得
-			nodes = doc.selectNodes("#inner_container #columnWrap .paging .paging_nextlink a");
-			if (nodes != null && !nodes.isEmpty()) {
-				nodesList.add(nodes);
-			}
+		List<Nodes<Node>> nodesList = new ArrayList<>();
+		// 前ページを取得
+		Nodes<Node> nodes = doc.selectNodes("#inner_container #columnWrap .paging .paging_prevlink a");
+		if (nodes != null && !nodes.isEmpty()) {
+			nodesList.add(nodes);
+		}
+		// 番号指定のページを取得
+		nodes = doc.selectNodes("#inner_container #columnWrap .paging .paging_numberlink a");
+		if (nodes != null && !nodes.isEmpty()) {
+			nodesList.add(nodes);
+		}
+		// 次ページを取得
+		nodes = doc.selectNodes("#inner_container #columnWrap .paging .paging_nextlink a");
+		if (nodes != null && !nodes.isEmpty()) {
+			nodesList.add(nodes);
+		}
 
-			for (Nodes<Node> nodez : nodesList) {
-				for (Node node : nodez) {
-					Element e = node.parentElement().firstElementChild();
-					if (e != null) {
-						String link = e.attr("abs:href");
-						if (!link.isEmpty()) {
-							if (!set.contains(link)) {
-								set.add(link);
-								list.add(new PageInfo(link, getDocument(this.getHttpResponse(link), link)));
-							}
+		for (Nodes<Node> nodez : nodesList) {
+			for (Node node : nodez) {
+				Element e = node.parentElement().firstElementChild();
+				if (e != null) {
+					String link = e.attr("abs:href");
+					if (!link.isEmpty()) {
+						if (!set.contains(link)) {
+							set.add(link);
+							list.add(new PageInfo(link, getDocument(this.getHttpResponse(link), link)));
 						}
 					}
 				}
 			}
-		} catch (URISyntaxException | IOException e) {
-			e.printStackTrace();
 		}
 
 		return list;
@@ -267,8 +260,10 @@ public class SiteAccessService {
 	 *
 	 * @param address アドレス
 	 * @return レス一覧
+	 * @throws IOException
+	 * @throws URISyntaxException
 	 */
-	public List<ResponseInfo> getResponseList(String address) {
+	public List<ResponseInfo> getResponseList(String address) throws URISyntaxException, IOException {
 		// ページ一覧の取得
 		List<PageInfo> pageList = getResponsePageList(address);
 
@@ -314,50 +309,48 @@ public class SiteAccessService {
 	 *
 	 * @param address アドレス
 	 * @return ページ一覧
+	 * @throws IOException
+	 * @throws URISyntaxException
 	 */
-	private List<PageInfo> getResponsePageList(String address) {
+	private List<PageInfo> getResponsePageList(String address) throws URISyntaxException, IOException {
 		List<PageInfo> list = new ArrayList<>();
-		try {
-			Document doc = this.getDocument(this.getHttpResponse(address), address);
+		Document doc = this.getDocument(this.getHttpResponse(address), address);
 
-			Set<String> set = new HashSet<>();
+		Set<String> set = new HashSet<>();
 
-			// 現在開いているページを登録
-			list.add(new PageInfo(address, doc));
+		// 現在開いているページを登録
+		list.add(new PageInfo(address, doc));
 
-			List<Nodes<Node>> nodesList = new ArrayList<>();
-			// 前ページを取得
-			Nodes<Node> nodes = doc.selectNodes("#inner_container .reslist_td .paging .paging_prevlink a");
-			if (nodes != null && !nodes.isEmpty()) {
-				nodesList.add(nodes);
-			}
-			// 番号指定のページを取得
-			nodes = doc.selectNodes("#inner_container .reslist_td .paging .paging_numberlink a");
-			if (nodes != null && !nodes.isEmpty()) {
-				nodesList.add(nodes);
-			}
-			// 次ページを取得
-			nodes = doc.selectNodes("#inner_container .reslist_td .paging .paging_nextlink a");
-			if (nodes != null && !nodes.isEmpty()) {
-				nodesList.add(nodes);
-			}
+		List<Nodes<Node>> nodesList = new ArrayList<>();
+		// 前ページを取得
+		Nodes<Node> nodes = doc.selectNodes("#inner_container .reslist_td .paging .paging_prevlink a");
+		if (nodes != null && !nodes.isEmpty()) {
+			nodesList.add(nodes);
+		}
+		// 番号指定のページを取得
+		nodes = doc.selectNodes("#inner_container .reslist_td .paging .paging_numberlink a");
+		if (nodes != null && !nodes.isEmpty()) {
+			nodesList.add(nodes);
+		}
+		// 次ページを取得
+		nodes = doc.selectNodes("#inner_container .reslist_td .paging .paging_nextlink a");
+		if (nodes != null && !nodes.isEmpty()) {
+			nodesList.add(nodes);
+		}
 
-			for (Nodes<Node> nodez : nodesList) {
-				for (Node node : nodez) {
-					Element e = node.parentElement().firstElementChild();
-					if (e != null) {
-						String link = e.attr("abs:href");
-						if (!link.isEmpty()) {
-							if (!set.contains(link)) {
-								set.add(link);
-								list.add(new PageInfo(link, getDocument(this.getHttpResponse(link), link)));
-							}
+		for (Nodes<Node> nodez : nodesList) {
+			for (Node node : nodez) {
+				Element e = node.parentElement().firstElementChild();
+				if (e != null) {
+					String link = e.attr("abs:href");
+					if (!link.isEmpty()) {
+						if (!set.contains(link)) {
+							set.add(link);
+							list.add(new PageInfo(link, getDocument(this.getHttpResponse(link), link)));
 						}
 					}
 				}
 			}
-		} catch (URISyntaxException | IOException e) {
-			e.printStackTrace();
 		}
 
 		return list;
