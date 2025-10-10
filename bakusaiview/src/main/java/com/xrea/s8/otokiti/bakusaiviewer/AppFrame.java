@@ -159,6 +159,8 @@ public class AppFrame extends JFrame {
 	private void reloadPage(PageMode pageMode) {
 		switch (pageMode) {
 			case COUNTRY:
+				// 履歴一覧画面再表示
+				this.reloadHistoryPage();
 				// 国一覧画面再表示
 				this.reloadCountryPage();
 				break;
@@ -175,6 +177,8 @@ public class AppFrame extends JFrame {
 				this.reloadThreadPage();
 				break;
 			case RESPONSE:
+				// 履歴一覧画面再表示
+				this.reloadHistoryPage();
 				// レス一覧画面再表示
 				this.reloadResponsePage();
 				break;
@@ -182,7 +186,6 @@ public class AppFrame extends JFrame {
 				break;
 		}
 
-		this.reloadHistoryPage();
 		this.display();
 	}
 
@@ -192,10 +195,6 @@ public class AppFrame extends JFrame {
 	private void reloadHistoryPage() {
 		DefaultListModel<HistoryInfo> listModel = new DefaultListModel<>();
 		JList<HistoryInfo> historyList = new JList<>(listModel);
-
-		for (HistoryInfo info : service.getHistory()) {
-			listModel.addElement(info);
-		}
 		historyList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
 		JScrollPane scrollPnl = new JScrollPane();
@@ -204,6 +203,31 @@ public class AppFrame extends JFrame {
 		this.historyPnl.removeAll();
 		this.historyPnl.setLayout(new BorderLayout());
 		this.historyPnl.add(scrollPnl, BorderLayout.CENTER);
+
+		// イベントディスパッチスレッドの作成
+		SwingWorker<List<HistoryInfo>, String> worker = new SwingWorker<>() {
+			@Override
+			protected List<HistoryInfo> doInBackground() throws Exception {
+				// 履歴一覧の取得
+				return service.getHistory();
+			}
+
+			protected void process(List<String> chunks) {
+			}
+
+			@Override
+			protected void done() {
+				try {
+					for (HistoryInfo info : get()) {
+						listModel.addElement(info);
+					}
+				} catch (InterruptedException | ExecutionException e) {
+					e.printStackTrace();
+				}
+				publish("");
+			}
+		};
+		worker.execute();
 	}
 
 	/**
@@ -212,31 +236,30 @@ public class AppFrame extends JFrame {
 	private void reloadCountryPage() {
 		DefaultListModel<CountryInfo> listModel = new DefaultListModel<>();
 		JList<CountryInfo> countryList = new JList<>(listModel);
+		countryList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+		countryList.addListSelectionListener(e -> {
+			if (!e.getValueIsAdjusting()) {
+				CountryInfo selected = countryList.getSelectedValue();
+				if (selected != null) {
+					this.urlHistory.push(this.targetUrl);
+					this.targetUrl = selected.getUrl();
+					this.backBtn.setEnabled(true);
+					if (this.targetUrl.indexOf("acode=") >= 0) {
+						this.reloadPage(PageMode.MENU);
+					} else {
+						this.reloadPage(PageMode.AREA);
+					}
+				}
+			}
+		});
+		JScrollPane scrollPnl = new JScrollPane();
+		scrollPnl.setViewportView(countryList);
 
-//		SwingWorker<Integer, String> worker = new SwingWorker<>() {
-//			@Override
-//			protected Integer doInBackground() throws Exception {
-//				publish("国一覧を取得中...");
-//				// 国一覧の取得
-//				for (CountryInfo info : service.getCountryList(targetUrl)) {
-//					listModel.addElement(info);
-//				}
-//				return null;
-//			}
-//
-//			protected void process(List<String> chunks) {
-//				for (String msg : chunks) {
-//					msgLbl.setText(msg);
-//				}
-//			}
-//
-//			@Override
-//			protected void done() {
-//				publish("");
-//				countryList.doLayout();
-//				countryList.requestFocusInWindow();
-//			}
-//		};
+		this.mainPnl.removeAll();
+		this.mainPnl.setLayout(new BorderLayout());
+		this.mainPnl.add(scrollPnl, BorderLayout.CENTER);
+
+		// イベントディスパッチスレッドの作成
 		SwingWorker<List<CountryInfo>, String> worker = new SwingWorker<>() {
 			@Override
 			protected List<CountryInfo> doInBackground() throws Exception {
@@ -264,29 +287,6 @@ public class AppFrame extends JFrame {
 			}
 		};
 		worker.execute();
-
-		countryList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-		countryList.addListSelectionListener(e -> {
-			if (!e.getValueIsAdjusting()) {
-				CountryInfo selected = countryList.getSelectedValue();
-				if (selected != null) {
-					this.urlHistory.push(this.targetUrl);
-					this.targetUrl = selected.getUrl();
-					this.backBtn.setEnabled(true);
-					if (this.targetUrl.indexOf("acode=") >= 0) {
-						this.reloadPage(PageMode.MENU);
-					} else {
-						this.reloadPage(PageMode.AREA);
-					}
-				}
-			}
-		});
-		JScrollPane scrollPnl = new JScrollPane();
-		scrollPnl.setViewportView(countryList);
-
-		this.mainPnl.removeAll();
-		this.mainPnl.setLayout(new BorderLayout());
-		this.mainPnl.add(scrollPnl, BorderLayout.CENTER);
 	}
 
 	/**
@@ -295,7 +295,30 @@ public class AppFrame extends JFrame {
 	private void reloadAreaPage() {
 		DefaultListModel<AreaInfo> listModel = new DefaultListModel<>();
 		JList<AreaInfo> areaList = new JList<>(listModel);
+		areaList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+		areaList.addListSelectionListener(e -> {
+			if (!e.getValueIsAdjusting()) {
+				AreaInfo selected = areaList.getSelectedValue();
+				if (selected != null) {
+					this.urlHistory.push(this.targetUrl);
+					this.targetUrl = selected.getUrl();
+					this.backBtn.setEnabled(true);
+					if (this.targetUrl.indexOf("acode=") >= 0) {
+						this.reloadPage(PageMode.MENU);
+					} else {
+						this.reloadPage(PageMode.COUNTRY);
+					}
+				}
+			}
+		});
+		JScrollPane scrollPnl = new JScrollPane();
+		scrollPnl.setViewportView(areaList);
 
+		this.mainPnl.removeAll();
+		this.mainPnl.setLayout(new BorderLayout());
+		this.mainPnl.add(scrollPnl, BorderLayout.CENTER);
+
+		// イベントディスパッチスレッドの作成
 		SwingWorker<List<AreaInfo>, String> worker = new SwingWorker<>() {
 			@Override
 			protected List<AreaInfo> doInBackground() throws Exception {
@@ -323,29 +346,6 @@ public class AppFrame extends JFrame {
 			}
 		};
 		worker.execute();
-
-		areaList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-		areaList.addListSelectionListener(e -> {
-			if (!e.getValueIsAdjusting()) {
-				AreaInfo selected = areaList.getSelectedValue();
-				if (selected != null) {
-					this.urlHistory.push(this.targetUrl);
-					this.targetUrl = selected.getUrl();
-					this.backBtn.setEnabled(true);
-					if (this.targetUrl.indexOf("acode=") >= 0) {
-						this.reloadPage(PageMode.MENU);
-					} else {
-						this.reloadPage(PageMode.COUNTRY);
-					}
-				}
-			}
-		});
-		JScrollPane scrollPnl = new JScrollPane();
-		scrollPnl.setViewportView(areaList);
-
-		this.mainPnl.removeAll();
-		this.mainPnl.setLayout(new BorderLayout());
-		this.mainPnl.add(scrollPnl, BorderLayout.CENTER);
 	}
 
 	/**
@@ -354,7 +354,26 @@ public class AppFrame extends JFrame {
 	private void reloadMenuPage() {
 		DefaultListModel<MenuInfo> listModel = new DefaultListModel<>();
 		JList<MenuInfo> menuList = new JList<>(listModel);
+		menuList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+		menuList.addListSelectionListener(e -> {
+			if (!e.getValueIsAdjusting()) {
+				MenuInfo selected = menuList.getSelectedValue();
+				if (selected != null) {
+					this.urlHistory.push(this.targetUrl);
+					this.targetUrl = selected.getUrl();
+					this.backBtn.setEnabled(true);
+					this.reloadPage(PageMode.THREAD);
+				}
+			}
+		});
+		JScrollPane scrollPnl = new JScrollPane();
+		scrollPnl.setViewportView(menuList);
 
+		this.mainPnl.removeAll();
+		this.mainPnl.setLayout(new BorderLayout());
+		this.mainPnl.add(scrollPnl, BorderLayout.CENTER);
+
+		// イベントディスパッチスレッドの作成
 		SwingWorker<List<MenuInfo>, String> worker = new SwingWorker<>() {
 			@Override
 			protected List<MenuInfo> doInBackground() throws Exception {
@@ -382,25 +401,6 @@ public class AppFrame extends JFrame {
 			}
 		};
 		worker.execute();
-
-		menuList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-		menuList.addListSelectionListener(e -> {
-			if (!e.getValueIsAdjusting()) {
-				MenuInfo selected = menuList.getSelectedValue();
-				if (selected != null) {
-					this.urlHistory.push(this.targetUrl);
-					this.targetUrl = selected.getUrl();
-					this.backBtn.setEnabled(true);
-					this.reloadPage(PageMode.THREAD);
-				}
-			}
-		});
-		JScrollPane scrollPnl = new JScrollPane();
-		scrollPnl.setViewportView(menuList);
-
-		this.mainPnl.removeAll();
-		this.mainPnl.setLayout(new BorderLayout());
-		this.mainPnl.add(scrollPnl, BorderLayout.CENTER);
 	}
 
 	/**
@@ -409,7 +409,30 @@ public class AppFrame extends JFrame {
 	private void reloadThreadPage() {
 		DefaultListModel<ThreadInfo> listModel = new DefaultListModel<>();
 		JList<ThreadInfo> threadList = new JList<>(listModel);
+		threadList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+		threadList.addListSelectionListener(e -> {
+			if (!e.getValueIsAdjusting()) {
+				ThreadInfo selected = threadList.getSelectedValue();
+				if (selected != null) {
+					HistoryInfo info = new HistoryInfo(selected.getName(), selected.getUrl());
+					List<HistoryInfo> list = service.getHistory();
+					list.add(info);
+					service.saveHistory(list);
 
+					this.targetUrl = selected.getUrl();
+					this.backBtn.setEnabled(true);
+					this.reloadPage(PageMode.RESPONSE);
+				}
+			}
+		});
+		JScrollPane scrollPnl = new JScrollPane();
+		scrollPnl.setViewportView(threadList);
+
+		this.mainPnl.removeAll();
+		this.mainPnl.setLayout(new BorderLayout());
+		this.mainPnl.add(scrollPnl, BorderLayout.CENTER);
+
+		// イベントディスパッチスレッドの作成
 		SwingWorker<List<ThreadInfo>, String> worker = new SwingWorker<>() {
 			@Override
 			protected List<ThreadInfo> doInBackground() throws Exception {
@@ -437,29 +460,6 @@ public class AppFrame extends JFrame {
 			}
 		};
 		worker.execute();
-
-		threadList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-		threadList.addListSelectionListener(e -> {
-			if (!e.getValueIsAdjusting()) {
-				ThreadInfo selected = threadList.getSelectedValue();
-				if (selected != null) {
-					HistoryInfo info = new HistoryInfo(selected.getName(), selected.getUrl());
-					List<HistoryInfo> list = service.getHistory();
-					list.add(info);
-					service.saveHistory(list);
-
-					this.targetUrl = selected.getUrl();
-					this.backBtn.setEnabled(true);
-					this.reloadPage(PageMode.RESPONSE);
-				}
-			}
-		});
-		JScrollPane scrollPnl = new JScrollPane();
-		scrollPnl.setViewportView(threadList);
-
-		this.mainPnl.removeAll();
-		this.mainPnl.setLayout(new BorderLayout());
-		this.mainPnl.add(scrollPnl, BorderLayout.CENTER);
 	}
 
 	/**
@@ -468,6 +468,7 @@ public class AppFrame extends JFrame {
 	 * @throws URISyntaxException
 	 */
 	private void reloadResponsePage() {
+		// イベントディスパッチスレッドの作成
 		SwingWorker<List<ResponseInfo>, String> worker = new SwingWorker<>() {
 			@Override
 			protected List<ResponseInfo> doInBackground() throws Exception {
