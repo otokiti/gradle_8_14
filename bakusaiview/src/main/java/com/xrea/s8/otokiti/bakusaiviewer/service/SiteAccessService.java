@@ -3,18 +3,22 @@ package com.xrea.s8.otokiti.bakusaiviewer.service;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.nodes.Node;
+import org.jsoup.select.Elements;
 import org.jsoup.select.Nodes;
 
 import com.xrea.s8.otokiti.bakusaiviewer.entity.AreaInfo;
 import com.xrea.s8.otokiti.bakusaiviewer.entity.CountryInfo;
+import com.xrea.s8.otokiti.bakusaiviewer.entity.GirlInfo;
 import com.xrea.s8.otokiti.bakusaiviewer.entity.HistoryInfo;
 import com.xrea.s8.otokiti.bakusaiviewer.entity.MenuInfo;
 import com.xrea.s8.otokiti.bakusaiviewer.entity.PageInfo;
@@ -73,6 +77,64 @@ public class SiteAccessService {
 	 */
 	private Document getDocument(final String html, final String address) {
 		return Jsoup.parse(html, address);
+	}
+
+	public List<GirlInfo> test() throws URISyntaxException, IOException {
+		String baseurl = "https://www.cityheaven.net/shizuoka/reviewlist/biz6/typ9017/A2202/A220201/@@@/?lo=1";
+		List<String> siteList = new ArrayList<>();
+//		for (int i = 1; i <= 795; i++) {
+		for (int i = 1; i <= 20; i++) {
+			siteList.add(baseurl.replaceFirst("@@@", String.valueOf(i)));
+		}
+
+		Map<String, GirlInfo> map = new HashMap<>();
+
+		for (String site : siteList) {
+			Document doc = this.getDocument(this.getHttpResponse(site), site);
+			Nodes<Node> nodes = doc.selectNodes("a.item-link");
+			for (Node node : nodes) {
+				Elements es1 = ((Element) node).getElementsByClass("review-evaluation").first().getElementsByTag("span");
+				String girlPoint = es1.get(0).text();
+				String playPoint = es1.get(1).text();
+				if (Float.parseFloat(girlPoint) == 5.0 && Float.parseFloat(playPoint) == 5.0) {
+					Element e2 = ((Element) node).getElementsByClass("shop-info").first();
+					if (e2.getElementsByClass("girls-name").isEmpty()) {
+						continue;
+					} else {
+						String name = e2.getElementsByClass("girls-name").first().text().trim();
+						if (name.equals("現在在籍なし")) {
+							continue;
+						}
+					}
+					String url = test(node.attr("abs:href"));
+					GirlInfo info = null;
+					if (map.containsKey(url)) {
+						info = map.get(url);
+						info.setCount(String.valueOf(Integer.parseInt(info.getCount()) + 1));
+					} else {
+						info = new GirlInfo();
+						info.setGirl(e2.getElementsByClass("girls-name").first().text());
+						info.setShop(e2.getElementsByClass("shop-name").first().text());
+						info.setUrl(url);
+						info.setCount("1");
+						map.put(url, info);
+					}
+				}
+			}
+		}
+
+		List<GirlInfo> list = new ArrayList<>();
+		for (GirlInfo val : map.values()) {
+			list.add(val);
+		}
+
+		return list;
+	}
+
+	private String test(String address) throws URISyntaxException, IOException {
+		Document doc = this.getDocument(this.getHttpResponse(address), address);
+		Node node = doc.selectNodes("p.more-girlsinfo").first();
+		return ((Element) node).getElementsByTag("a").first().attr("abs:href");
 	}
 
 	/**

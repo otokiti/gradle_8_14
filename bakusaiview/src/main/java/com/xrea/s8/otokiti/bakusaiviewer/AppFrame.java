@@ -24,6 +24,7 @@ import javax.swing.SwingWorker;
 
 import com.xrea.s8.otokiti.bakusaiviewer.entity.AreaInfo;
 import com.xrea.s8.otokiti.bakusaiviewer.entity.CountryInfo;
+import com.xrea.s8.otokiti.bakusaiviewer.entity.GirlInfo;
 import com.xrea.s8.otokiti.bakusaiviewer.entity.HistoryInfo;
 import com.xrea.s8.otokiti.bakusaiviewer.entity.MenuInfo;
 import com.xrea.s8.otokiti.bakusaiviewer.entity.ResponseInfo;
@@ -163,6 +164,9 @@ public class AppFrame extends JFrame {
 				this.reloadHistoryPage();
 				// 国一覧画面再表示
 				this.reloadCountryPage();
+// TODO テスト
+//				this.test();
+// TODO テスト
 				break;
 			case AREA:
 				// 地域一覧画面再表示
@@ -187,6 +191,39 @@ public class AppFrame extends JFrame {
 		}
 
 		this.display();
+	}
+
+	private void test() {
+		// イベントディスパッチスレッドの作成
+		SwingWorker<List<GirlInfo>, String> worker = new SwingWorker<>() {
+			@Override
+			protected List<GirlInfo> doInBackground() throws Exception {
+				return service.test();
+			}
+
+			protected void process(List<String> chunks) {
+			}
+
+			@Override
+			protected void done() {
+				try {
+					List<GirlInfo> list = get();
+					Collections.sort(list);
+					Collections.reverse(list);
+					for (GirlInfo girl : get()) {
+						System.out.println("店：" + girl.getShop());
+						System.out.println("女の子：" + girl.getGirl());
+						System.out.println("ＵＲＬ：" + girl.getUrl());
+						System.out.println("件数：" + girl.getCount());
+						System.out.println("=============================================================================");
+
+					}
+				} catch (InterruptedException | ExecutionException e) {
+					e.printStackTrace();
+				}
+			}
+		};
+		worker.execute();
 	}
 
 	/**
