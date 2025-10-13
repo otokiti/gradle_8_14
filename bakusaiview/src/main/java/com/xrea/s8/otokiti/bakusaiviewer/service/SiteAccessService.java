@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -16,6 +15,7 @@ import org.jsoup.nodes.Node;
 import org.jsoup.select.Elements;
 import org.jsoup.select.Nodes;
 
+import com.xrea.s8.otokiti.bakusaiviewer.SiteException;
 import com.xrea.s8.otokiti.bakusaiviewer.entity.AreaInfo;
 import com.xrea.s8.otokiti.bakusaiviewer.entity.CountryInfo;
 import com.xrea.s8.otokiti.bakusaiviewer.entity.GirlInfo;
@@ -80,7 +80,7 @@ public class SiteAccessService {
 	}
 
 	public List<GirlInfo> test() throws URISyntaxException, IOException {
-		String baseurl = "https://www.cityheaven.net/shizuoka/reviewlist/biz6/typ9017/A2202/A220201/@@@/?lo=1";
+		String baseurl = "https://www.cityheaven.net/shizuoka/reviewlist/biz6/typ9017/A2202/A220201/@@@";
 		List<String> siteList = new ArrayList<>();
 //		for (int i = 1; i <= 795; i++) {
 		for (int i = 1; i <= 20; i++) {
@@ -106,7 +106,9 @@ public class SiteAccessService {
 							continue;
 						}
 					}
-					String url = test(node.attr("abs:href"));
+					String link = node.attr("abs:href");
+					link = link.substring(0, link.indexOf("/?lo=1"));
+					String url = test(link);
 					GirlInfo info = null;
 					if (map.containsKey(url)) {
 						info = map.get(url);
@@ -244,8 +246,9 @@ public class SiteAccessService {
 	 * @return 掲示板一覧
 	 * @throws IOException
 	 * @throws URISyntaxException
+	 * @throws SiteException
 	 */
-	public List<ThreadInfo> getThreadList(String address) throws URISyntaxException, IOException {
+	public List<ThreadInfo> getThreadList(String address) throws URISyntaxException, IOException, SiteException {
 		// ページ一覧の取得
 		List<PageInfo> pageList = getThreadPageList(address);
 
@@ -254,9 +257,12 @@ public class SiteAccessService {
 			Nodes<Node> nodes = page.getDoc().selectNodes("#inner_container #columnWrap #thrListWrap #thrListInner a");
 			for (Node node : nodes) {
 				Element element = (Element) node;
+				String link = element.attr("abs:href");
+				link = link.substring(0, link.indexOf("/tp="));
+
 				ThreadInfo info = new ThreadInfo();
 				info.setName(element.attr("title"));
-				info.setUrl(element.attr("abs:href"));
+				info.setUrl(link);
 				list.add(info);
 			}
 		}
@@ -272,49 +278,73 @@ public class SiteAccessService {
 	 * @return ページ一覧
 	 * @throws IOException
 	 * @throws URISyntaxException
+	 * @throws SiteException
 	 */
-	private List<PageInfo> getThreadPageList(String address) throws URISyntaxException, IOException {
+	private List<PageInfo> getThreadPageList(String address) throws URISyntaxException, IOException, SiteException {
 		List<PageInfo> list = new ArrayList<>();
-		Document doc = this.getDocument(this.getHttpResponse(address), address);
-
-		Set<String> set = new HashSet<>();
-
-		// 現在開いているページを登録
-		list.add(new PageInfo(address, doc));
-
-		List<Nodes<Node>> nodesList = new ArrayList<>();
-		// 前ページを取得
-		Nodes<Node> nodes = doc.selectNodes("#inner_container #columnWrap .paging .paging_prevlink a");
-		if (nodes != null && !nodes.isEmpty()) {
-			nodesList.add(nodes);
-		}
-		// 番号指定のページを取得
-		nodes = doc.selectNodes("#inner_container #columnWrap .paging .paging_numberlink a");
-		if (nodes != null && !nodes.isEmpty()) {
-			nodesList.add(nodes);
-		}
-		// 次ページを取得
-		nodes = doc.selectNodes("#inner_container #columnWrap .paging .paging_nextlink a");
-		if (nodes != null && !nodes.isEmpty()) {
-			nodesList.add(nodes);
-		}
-
-		for (Nodes<Node> nodez : nodesList) {
-			for (Node node : nodez) {
-				Element e = node.parentElement().firstElementChild();
-				if (e != null) {
-					String link = e.attr("abs:href");
-					if (!link.isEmpty()) {
-						if (!set.contains(link)) {
-							set.add(link);
-							list.add(new PageInfo(link, getDocument(this.getHttpResponse(link), link)));
+		for (int i = 0; i <= 20; i++) {
+			String url = address + "/p=" + String.valueOf(i + 1);
+			Document doc = this.getDocument(this.getHttpResponse(url), url);
+			if (doc.selectFirst("#thrListInner .thrNumber") != null) {
+				list.add(new PageInfo(url, doc));
+			} else {
+				if (i == 0) {
+					Element clazz = doc.selectFirst("#error_code_text");
+					if (clazz != null) {
+						String[] error = clazz.text().split(":");
+						if (error != null && error.length == 3) {
+// TODOこのエラーがうまくいかない
+							throw new SiteException(error[1], error[2]);
 						}
 					}
 				}
+				break;
 			}
 		}
-
 		return list;
+// TODO テスト用に制限
+// TODO 本番は取得をキャッシュ、フィルタでその中から表示ということも行いたい
+//		List<PageInfo> list = new ArrayList<>();
+//		Document doc = this.getDocument(this.getHttpResponse(address), address);
+//
+//		Set<String> set = new HashSet<>();
+//
+//		// 現在開いているページを登録
+//		list.add(new PageInfo(address, doc));
+//
+//		List<Nodes<Node>> nodesList = new ArrayList<>();
+//		// 前ページを取得
+//		Nodes<Node> nodes = doc.selectNodes("#inner_container #columnWrap .paging .paging_prevlink a");
+//		if (nodes != null && !nodes.isEmpty()) {
+//			nodesList.add(nodes);
+//		}
+//		// 番号指定のページを取得
+//		nodes = doc.selectNodes("#inner_container #columnWrap .paging .paging_numberlink a");
+//		if (nodes != null && !nodes.isEmpty()) {
+//			nodesList.add(nodes);
+//		}
+//		// 次ページを取得
+//		nodes = doc.selectNodes("#inner_container #columnWrap .paging .paging_nextlink a");
+//		if (nodes != null && !nodes.isEmpty()) {
+//			nodesList.add(nodes);
+//		}
+//
+//		for (Nodes<Node> nodez : nodesList) {
+//			for (Node node : nodez) {
+//				Element e = node.parentElement().firstElementChild();
+//				if (e != null) {
+//					String link = e.attr("abs:href");
+//					if (!link.isEmpty()) {
+//						if (!set.contains(link)) {
+//							set.add(link);
+//							list.add(new PageInfo(link, getDocument(this.getHttpResponse(link), link)));
+//						}
+//					}
+//				}
+//			}
+//		}
+//
+//		return list;
 	}
 
 	/**
@@ -376,45 +406,15 @@ public class SiteAccessService {
 	 */
 	private List<PageInfo> getResponsePageList(String address) throws URISyntaxException, IOException {
 		List<PageInfo> list = new ArrayList<>();
-		Document doc = this.getDocument(this.getHttpResponse(address), address);
-
-		Set<String> set = new HashSet<>();
-
-		// 現在開いているページを登録
-		list.add(new PageInfo(address, doc));
-
-		List<Nodes<Node>> nodesList = new ArrayList<>();
-		// 前ページを取得
-		Nodes<Node> nodes = doc.selectNodes("#inner_container .reslist_td .paging .paging_prevlink a");
-		if (nodes != null && !nodes.isEmpty()) {
-			nodesList.add(nodes);
-		}
-		// 番号指定のページを取得
-		nodes = doc.selectNodes("#inner_container .reslist_td .paging .paging_numberlink a");
-		if (nodes != null && !nodes.isEmpty()) {
-			nodesList.add(nodes);
-		}
-		// 次ページを取得
-		nodes = doc.selectNodes("#inner_container .reslist_td .paging .paging_nextlink a");
-		if (nodes != null && !nodes.isEmpty()) {
-			nodesList.add(nodes);
-		}
-
-		for (Nodes<Node> nodez : nodesList) {
-			for (Node node : nodez) {
-				Element e = node.parentElement().firstElementChild();
-				if (e != null) {
-					String link = e.attr("abs:href");
-					if (!link.isEmpty()) {
-						if (!set.contains(link)) {
-							set.add(link);
-							list.add(new PageInfo(link, getDocument(this.getHttpResponse(link), link)));
-						}
-					}
-				}
+		for (int i = 0; i <= 20; i++) {
+			String url = address + "/p=" + String.valueOf(i + 1);
+			Document doc = this.getDocument(this.getHttpResponse(url), url);
+			if (doc.selectFirst("#res_list .resnumb") != null) {
+				list.add(new PageInfo(url, doc));
+			} else {
+				break;
 			}
 		}
-
 		return list;
 	}
 
@@ -423,7 +423,7 @@ public class SiteAccessService {
 	 *
 	 * @return 履歴情報リスト
 	 */
-	public List<HistoryInfo> getHistory() {
+	public Set<HistoryInfo> getHistory() {
 		return this.webService.getHistory();
 	}
 
@@ -432,7 +432,7 @@ public class SiteAccessService {
 	 *
 	 * @param history 履歴情報リスト
 	 */
-	public void saveHistory(List<HistoryInfo> history) {
+	public void saveHistory(Set<HistoryInfo> history) {
 		this.webService.saveHistory(history);
 	}
 }

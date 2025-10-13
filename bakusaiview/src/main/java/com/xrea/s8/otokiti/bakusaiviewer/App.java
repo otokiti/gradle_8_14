@@ -13,9 +13,9 @@ public class App {
 	/** 履歴ファイル */
 	public static final String HISTORY_FILE = "/history.json";
 	/** ログファイル */
-	public static final String LOG_PATH = "./log";
+	public static final String LOG_PATH = "log";
 	/** キャッシュフォルダ */
-	public static final String CACHE_PATH = "./cache";
+	public static final String CACHE_PATH = "cache";
 
 	/** ベースURL */
 	public static final String BASE_URL = "https://bakusai.com/overarea/";

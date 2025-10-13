@@ -1,5 +1,7 @@
 package com.xrea.s8.otokiti.bakusaiviewer.entity;
 
+import java.util.Objects;
+
 /**
  * 履歴情報.
  *
@@ -73,5 +75,19 @@ public class HistoryInfo {
 	 */
 	public String toString() {
 		return this.name;
+	}
+
+	@Override
+	public int hashCode() {
+		return Objects.hash(url);
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj) return true;
+		if (obj == null) return false;
+		if (getClass() != obj.getClass()) return false;
+		HistoryInfo other = (HistoryInfo) obj;
+		return Objects.equals(url, other.url);
 	}
 }

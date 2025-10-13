@@ -7,10 +7,10 @@ import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.io.IOUtils;
@@ -43,7 +43,7 @@ public class WebService {
 	// プロパティサービス
 	private PropertyService service;
 	// 履歴
-	private List<HistoryInfo> history;
+	private Set<HistoryInfo> history;
 
 	/**
 	 * 遅延インスタンス生成.
@@ -150,9 +150,9 @@ public class WebService {
 	 *
 	 * @return 履歴情報リスト
 	 */
-	public List<HistoryInfo> getHistory() {
+	public Set<HistoryInfo> getHistory() {
 		if (this.history == null) {
-			this.history = new ArrayList<>();
+			this.history = new HashSet<>();
 		}
 		return this.history;
 	}
@@ -162,7 +162,7 @@ public class WebService {
 	 *
 	 * @param history 履歴情報リスト
 	 */
-	public void saveHistory(List<HistoryInfo> history) {
+	public void saveHistory(Set<HistoryInfo> history) {
 		this.service.saveHistory(history);
 		this.history = history;
 	}

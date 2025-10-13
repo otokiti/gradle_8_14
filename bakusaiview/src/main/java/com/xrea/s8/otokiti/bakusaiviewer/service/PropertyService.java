@@ -3,8 +3,8 @@ package com.xrea.s8.otokiti.bakusaiviewer.service;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.List;
 import java.util.Properties;
+import java.util.Set;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -65,13 +65,13 @@ public class PropertyService {
 	 *
 	 * @return 履歴情報リスト
 	 */
-	public List<HistoryInfo> loadHistory() {
+	public Set<HistoryInfo> loadHistory() {
 		try {
 			File file = new File(System.getProperty("user.dir"), App.HISTORY_FILE);
 			if (!file.exists()) {
 				return null;
 			}
-			return new ObjectMapper().readValue(file, new TypeReference<List<HistoryInfo>>() {});
+			return new ObjectMapper().readValue(file, new TypeReference<Set<HistoryInfo>>() {});
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -83,7 +83,7 @@ public class PropertyService {
 	 *
 	 * @return 履歴情報リスト
 	 */
-	public void saveHistory(List<HistoryInfo> historyInfoList) {
+	public void saveHistory(Set<HistoryInfo> historyInfoList) {
 		try {
 			File file = new File(System.getProperty("user.dir"), App.HISTORY_FILE);
 			new ObjectMapper().writerWithDefaultPrettyPrinter().writeValue(file, historyInfoList);

@@ -2,12 +2,17 @@ package com.xrea.s8.otokiti.bakusaiviewer;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.io.BufferedWriter;
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayDeque;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 
 import javax.swing.BorderFactory;
@@ -22,6 +27,8 @@ import javax.swing.JSplitPane;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingWorker;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.xrea.s8.otokiti.bakusaiviewer.entity.AreaInfo;
 import com.xrea.s8.otokiti.bakusaiviewer.entity.CountryInfo;
 import com.xrea.s8.otokiti.bakusaiviewer.entity.GirlInfo;
@@ -242,9 +249,9 @@ public class AppFrame extends JFrame {
 		this.historyPnl.add(scrollPnl, BorderLayout.CENTER);
 
 		// イベントディスパッチスレッドの作成
-		SwingWorker<List<HistoryInfo>, String> worker = new SwingWorker<>() {
+		SwingWorker<Set<HistoryInfo>, String> worker = new SwingWorker<>() {
 			@Override
-			protected List<HistoryInfo> doInBackground() throws Exception {
+			protected Set<HistoryInfo> doInBackground() throws Exception {
 				// 履歴一覧の取得
 				return service.getHistory();
 			}
@@ -452,10 +459,11 @@ public class AppFrame extends JFrame {
 				ThreadInfo selected = threadList.getSelectedValue();
 				if (selected != null) {
 					HistoryInfo info = new HistoryInfo(selected.getName(), selected.getUrl());
-					List<HistoryInfo> list = service.getHistory();
-					list.add(info);
-					service.saveHistory(list);
-
+					Set<HistoryInfo> list = service.getHistory();
+					if (!list.contains(info)) {
+						list.add(info);
+						service.saveHistory(list);
+					}
 					this.targetUrl = selected.getUrl();
 					this.backBtn.setEnabled(true);
 					this.reloadPage(PageMode.RESPONSE);
@@ -475,7 +483,12 @@ public class AppFrame extends JFrame {
 			protected List<ThreadInfo> doInBackground() throws Exception {
 				publish("掲示板一覧を取得中...");
 				// 掲示板一覧の取得
-				return service.getThreadList(targetUrl);
+				try {
+					return service.getThreadList(targetUrl);
+				} catch (SiteException e) {
+					publish(e.getType() + ":" + e.getCode());
+				}
+				return null;
 			}
 
 			protected void process(List<String> chunks) {
@@ -493,7 +506,7 @@ public class AppFrame extends JFrame {
 				} catch (InterruptedException | ExecutionException e) {
 					e.printStackTrace();
 				}
-				publish("");
+//				publish("");
 			}
 		};
 		worker.execute();
@@ -523,16 +536,41 @@ public class AppFrame extends JFrame {
 			@Override
 			protected void done() {
 				try {
+					int acodeIndex = targetUrl.indexOf("acode=");
+					int ctgidIndex = targetUrl.indexOf("ctgid=");
+					int bidIndex = targetUrl.indexOf("bid=");
+					int tidIndex = targetUrl.indexOf("tid=");
+					String url = targetUrl;
+					String acode = url.substring(acodeIndex + "acode=".length(), ctgidIndex - 1);
+					String ctgid = url.substring(ctgidIndex + "ctgid=".length(), bidIndex - 1);
+					String bid = url.substring(bidIndex + "bid=".length(), tidIndex - 1);
+					String tid = url.substring(tidIndex + "tid=".length());
+
 					List<ResponseInfo> list = get();
 					Collections.sort(list);
-					for (ResponseInfo res : list) {
-						System.out.println(res.getResnumb() + " " + res.getCommentTime());
-						System.out.println(res.getCommentText());
-						System.out.println(res.getName());
-						System.out.println("----------------------------------------------------------");
+//					for (ResponseInfo res : list) {
+//						System.out.println(res.getResnumb() + " " + res.getCommentTime());
+//						System.out.println(res.getCommentText());
+//						System.out.println(res.getName());
+//						System.out.println("----------------------------------------------------------");
+//					}
+
+					ObjectMapper mapper = new ObjectMapper();
+					mapper.enable(SerializationFeature.INDENT_OUTPUT);
+					mapper.getFactory().setCharacterEscapes(new CustomCharacterEscapes());
+
+					Path path = Paths.get(System.getProperty("user.dir"), App.LOG_PATH, acode, ctgid, bid, tid + ".json");
+					path.toFile().getParentFile().mkdirs();
+					path.toFile().createNewFile();
+					try (BufferedWriter writer = Files.newBufferedWriter(path)) {
+						writer.write(mapper.writeValueAsString(list));
+					} catch (IOException e) {
+						e.printStackTrace();
 					}
 				} catch (InterruptedException | ExecutionException e) {
 					e.printStackTrace();
+				} catch (IOException e1) {
+					e1.printStackTrace();
 				}
 				publish("");
 			}
